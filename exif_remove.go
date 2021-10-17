@@ -4,13 +4,24 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"image/jpeg"
-	"image/png"
-
 	"github.com/dsoprea/go-exif"
 	"github.com/dsoprea/go-jpeg-image-structure"
 	"github.com/dsoprea/go-png-image-structure"
+	"image/jpeg"
+	"image/png"
 )
+
+var (
+	// ErrNoExif is meant that the image has no EXIF
+	ErrNoExif = errors.New("no exif data")
+	// ErrNotCompatible is meant that the image is not PNG/JPEG
+	ErrNotCompatible = errors.New("may not image")
+)
+
+// go-exif err can't compare by instance.
+func equalsErr(a, b error) bool {
+	return a.Error() == b.Error()
+}
 
 func Remove(data []byte) ([]byte, error) {
 
@@ -45,7 +56,10 @@ func Remove(data []byte) ([]byte, error) {
 
 		_, rawExif, err := sl.Exif()
 		if err != nil {
-			return data, nil
+			if equalsErr(err, ErrNoExif) {
+				return nil, ErrNoExif
+			}
+			return nil, err
 		}
 
 		startExifBytes := StartBytes
@@ -77,7 +91,10 @@ func Remove(data []byte) ([]byte, error) {
 
 		_, rawExif, err := cs.Exif()
 		if err != nil {
-			return data, nil
+			if equalsErr(err, ErrNoExif) {
+				return nil, ErrNoExif
+			}
+			return nil, err
 		}
 
 		startExifBytes := StartBytes
@@ -122,6 +139,8 @@ func Remove(data []byte) ([]byte, error) {
 			return nil, errors.New("EXIF removal corrupted " + err.Error())
 		}
 
+	} else {
+		return nil, ErrNotCompatible
 	}
 
 	return after, nil
