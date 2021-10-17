@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -28,7 +29,8 @@ func TestImages(t *testing.T) {
 
 	assert.Nil(t, err)
 
-	var re = regexp.MustCompile(`0 fail`)
+	var re = regexp.MustCompile(`21 pass, 12 fail`)
 	matches := re.FindStringSubmatch(string(actualRaw))
 	assert.True(t, len(matches) == 1, "Should parse all files in img folder")
+	log.Print(string(actualRaw))
 }
