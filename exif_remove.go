@@ -31,11 +31,14 @@ func Remove(data []byte) ([]byte, error) {
 
 	jmp := jpegstructure.NewJpegMediaParser()
 	pmp := pngstructure.NewPngMediaParser()
-	filtered := []byte{}
+	var before, after []byte
 
-	if jmp.LooksLikeFormat(data) {
+	// copy data not to effect args
+	before = append([]byte{}, data...)
 
-		sl, err := jmp.ParseBytes(data)
+	if jmp.LooksLikeFormat(before) {
+
+		sl, err := jmp.ParseBytes(before)
 		if err != nil {
 			return nil, err
 		}
@@ -48,28 +51,26 @@ func Remove(data []byte) ([]byte, error) {
 		startExifBytes := StartBytes
 		endExifBytes := EndBytes
 
-		if bytes.Contains(data, rawExif) {
-			for i := 0; i < len(data)-len(rawExif); i++ {
-				if bytes.Compare(data[i:i+len(rawExif)], rawExif) == 0 {
-					startExifBytes = i
-					endExifBytes = i + len(rawExif)
-					break
-				}
+		for i := 0; i < len(before)-len(rawExif); i++ {
+			if bytes.Compare(before[i:i+len(rawExif)], rawExif) == 0 {
+				startExifBytes = i
+				endExifBytes = i + len(rawExif)
+				break
 			}
-			fill := make([]byte, len(data[startExifBytes:endExifBytes]))
-			copy(data[startExifBytes:endExifBytes], fill)
 		}
+		fill := make([]byte, len(before[startExifBytes:endExifBytes]))
+		copy(before[startExifBytes:endExifBytes], fill)
 
-		filtered = data
+		after = before
 
-		_, err = jpeg.Decode(bytes.NewReader(filtered))
+		_, err = jpeg.Decode(bytes.NewReader(after))
 		if err != nil {
 			return nil, errors.New("EXIF removal corrupted " + err.Error())
 		}
 
-	} else if pmp.LooksLikeFormat(data) {
+	} else if pmp.LooksLikeFormat(before) {
 
-		cs, err := pmp.ParseBytes(data)
+		cs, err := pmp.ParseBytes(before)
 		if err != nil {
 			return nil, err
 		}
@@ -82,21 +83,19 @@ func Remove(data []byte) ([]byte, error) {
 		startExifBytes := StartBytes
 		endExifBytes := EndBytes
 
-		if bytes.Contains(data, rawExif) {
-			for i := 0; i < len(data)-len(rawExif); i++ {
-				if bytes.Compare(data[i:i+len(rawExif)], rawExif) == 0 {
-					startExifBytes = i
-					endExifBytes = i + len(rawExif)
-					break
-				}
+		for i := 0; i < len(before)-len(rawExif); i++ {
+			if bytes.Compare(before[i:i+len(rawExif)], rawExif) == 0 {
+				startExifBytes = i
+				endExifBytes = i + len(rawExif)
+				break
 			}
-			fill := make([]byte, len(data[startExifBytes:endExifBytes]))
-			copy(data[startExifBytes:endExifBytes], fill)
 		}
+		fill := make([]byte, len(before[startExifBytes:endExifBytes]))
+		copy(before[startExifBytes:endExifBytes], fill)
 
-		filtered = data
+		after = before
 
-		chunks := readPNGChunks(bytes.NewReader(filtered))
+		chunks := readPNGChunks(bytes.NewReader(after))
 
 		for _, chunk := range chunks {
 			if !chunk.CRCIsValid() {
@@ -107,23 +106,23 @@ func Remove(data []byte) ([]byte, error) {
 				binary.Write(buf, binary.BigEndian, crc)
 				crcBytes := buf.Bytes()
 
-				copy(filtered[offset:], crcBytes)
+				copy(after[offset:], crcBytes)
 			}
 		}
 
-		chunks = readPNGChunks(bytes.NewReader(filtered))
+		chunks = readPNGChunks(bytes.NewReader(after))
 		for _, chunk := range chunks {
 			if !chunk.CRCIsValid() {
 				return nil, errors.New("EXIF removal failed CRC")
 			}
 		}
 
-		_, err = png.Decode(bytes.NewReader(filtered))
+		_, err = png.Decode(bytes.NewReader(after))
 		if err != nil {
 			return nil, errors.New("EXIF removal corrupted " + err.Error())
 		}
 
 	}
 
-	return filtered, nil
+	return after, nil
 }
