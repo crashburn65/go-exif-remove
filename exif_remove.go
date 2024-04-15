@@ -7,8 +7,6 @@ import (
 	"image/jpeg"
 	"image/png"
 
-	"github.com/gabriel-vasile/mimetype"
-
 	"github.com/dsoprea/go-exif"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure"
 	pngstructure "github.com/dsoprea/go-png-image-structure"
@@ -56,7 +54,7 @@ func Remove(data []byte) ([]byte, error) {
 	// copy data not to effect args
 	before = append([]byte{}, data...)
 
-	if mtype == "image/jpeg" {
+	if mtype.Is("image/jpeg") {
 
 		sl, err := jmp.ParseBytes(before)
 		if err != nil {
@@ -91,7 +89,7 @@ func Remove(data []byte) ([]byte, error) {
 			return nil, errors.New("EXIF removal corrupted " + err.Error())
 		}
 
-	} else if mtype == "image/png" {
+	} else if mtype.Is("image/png") {
 
 		cs, err := pmp.ParseBytes(before)
 		if err != nil {
