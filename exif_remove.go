@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/dsoprea/go-exif"
-	"github.com/dsoprea/go-jpeg-image-structure"
-	"github.com/dsoprea/go-png-image-structure"
 	"image/jpeg"
 	"image/png"
+
+	"github.com/gabriel-vasile/mimetype"
+
+	"github.com/dsoprea/go-exif"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure"
+	pngstructure "github.com/dsoprea/go-png-image-structure"
+	"github.com/gabriel-vasile/mimetype"
 )
 
 var (
@@ -40,6 +44,11 @@ func Remove(data []byte) ([]byte, error) {
 		Media     interface{}
 	}
 
+	// use mimetype to check for file type instead af using jpegstructure's
+	// "LooksLikeFormat". This is because it seems to have some issues detecting
+	// certain jpeg files which would still be valid for exif removal.
+
+	mtype := mimetype.Detect(data)
 	jmp := jpegstructure.NewJpegMediaParser()
 	pmp := pngstructure.NewPngMediaParser()
 	var before, after []byte
@@ -47,7 +56,7 @@ func Remove(data []byte) ([]byte, error) {
 	// copy data not to effect args
 	before = append([]byte{}, data...)
 
-	if jmp.LooksLikeFormat(before) {
+	if mtype == "image/jpeg" {
 
 		sl, err := jmp.ParseBytes(before)
 		if err != nil {
@@ -82,7 +91,7 @@ func Remove(data []byte) ([]byte, error) {
 			return nil, errors.New("EXIF removal corrupted " + err.Error())
 		}
 
-	} else if pmp.LooksLikeFormat(before) {
+	} else if mtype == "image/png" {
 
 		cs, err := pmp.ParseBytes(before)
 		if err != nil {
