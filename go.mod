@@ -1,4 +1,4 @@
-module github.com/usagiga/go-exif-remove
+module github.com/crashburn65/go-exif-remove
 
 go 1.12
 
